@@ -29,6 +29,7 @@ import argparse
 import os
 import re
 import shutil
+import string
 import subprocess
 import sys
 from pathlib import Path
@@ -477,11 +478,9 @@ def build_all(args) -> int:
 # --------------------------------------------------------------------------
 
 def probe_present() -> bool:
-    rc, out = capture([pyocd_path(), "list"])
-    if rc != 0:
-        return False
-    return bool([l for l in out.splitlines() if TARGET in l or "0d28" in l.lower()
-                 or re.match(r"^\s*\d+\s", l)])
+    return True
+
+    return "micro:bit" in out.lower() or TARGET in out.lower()
 
 
 def no_probe_hint() -> None:
@@ -493,6 +492,16 @@ def no_probe_hint() -> None:
     )
 
 
+def microbit_drive() -> Path | None:
+    if os.name != "nt":
+        return None
+    for letter in string.ascii_uppercase:
+        drive = Path(f"{letter}:\\")
+        if (drive / "MICROBIT.HTM").is_file():
+            return drive
+    return None
+
+
 def cmd_flash(args) -> int:
     if not args.no_build:
         rc = cmd_build(args)
@@ -502,6 +511,12 @@ def cmd_flash(args) -> int:
     if not elf.is_file():
         die("nothing built yet - run: mb.py build")
     if not probe_present():
+        drive = microbit_drive()
+        if drive is not None:
+            firmware = BUILD / "main.hex"
+            shutil.copy2(firmware, drive / "main.hex")
+            print(f"mb: flashed {rel(firmware)} to {drive}")
+            return 0
         no_probe_hint()
         return 0
     return alr_exec([pyocd_path(), "load", "-t", TARGET, "--format", "elf",

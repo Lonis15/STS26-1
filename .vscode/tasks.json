@@ -12,21 +12,44 @@
             "detail": "Build the template and flash it to the micro:bit",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "flash"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
-            "group": { "kind": "build", "isDefault": true }
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "flash"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "Build",
             "detail": "Build the template (Code/itrs.gpr)",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "build"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
             "group": "build"
         },
         {
@@ -34,23 +57,45 @@
             "detail": "Pick any example and build + flash it, without reopening the folder",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "build", "--use", "${input:project}"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "build",
+                "--use",
+                "${input:project}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
             "group": "build"
         },
         {
-            // Deliberately NOT the default build task: with no editor focused
-            // VS Code cannot resolve ${fileDirname} and refuses to start.
             "label": "Build the file I'm looking at",
             "detail": "Build the example containing the currently open file",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "build", "--use-dir", "${fileDirname}"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "build",
+                "--use-dir",
+                "${fileDirname}"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
             "group": "build"
         },
         {
@@ -58,35 +103,62 @@
             "detail": "Run gnatprove in flow mode",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "prove"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "prove"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
             "group": "build"
         },
         {
-            // Codespaces have no USB, so the firmware normally has to be
-            // downloaded and handed to the flasher by hand. This serves the
-            // flasher from here instead, with the build already loaded.
             "label": "Flash from here (serve flasher)",
             "detail": "Serve the flasher on port 8080 with the firmware you just built",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "serve"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"],
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "serve"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ],
             "isBackground": true,
-            "presentation": { "reveal": "always", "panel": "dedicated" }
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated"
+            }
         },
         {
             "label": "Erase",
             "detail": "Mass-erase the micro:bit (try this if flashing times out)",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "erase"],
-            "options": { "cwd": "${workspaceFolder}" },
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "erase"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": []
         },
         {
@@ -94,9 +166,16 @@
             "detail": "Check that the toolchain and probe are usable",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "doctor"],
-            "options": { "cwd": "${workspaceFolder}" },
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "doctor"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
             "problemMatcher": []
         },
         {
@@ -104,10 +183,29 @@
             "detail": "Build every project; known failures are reported as XFAIL",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
-            "args": ["tools/mb.py", "build", "--all"],
-            "options": { "cwd": "${workspaceFolder}" },
-            "problemMatcher": ["$ada-error", "$ada-warning"]
+            "windows": {
+                "command": "python"
+            },
+            "args": [
+                "tools/mb.py",
+                "build",
+                "--all"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$ada-error",
+                "$ada-warning"
+            ]
+        },
+        {
+            "type": "ada",
+            "compound": [
+                "ada: Build main - Code/src/main.adb",
+                "ada: Run main - Code/src/main.adb"
+            ],
+            "label": "ada: Build and run main - Code/src/main.adb"
         }
     ],
     "inputs": [

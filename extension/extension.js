@@ -320,10 +320,20 @@ async function ensureConnected() {
   let device = await authorisedDevice();
   if (!device) {
     log("Asking you to choose the micro:bit...");
-    await vscode.commands.executeCommand(
-      "workbench.experimental.requestUsbDevice",
-      { filters: [{ vendorId: MICROBIT_VID }] }
-    );
+    try {
+      await vscode.commands.executeCommand(
+        "workbench.experimental.requestUsbDevice",
+        { filters: [{ vendorId: MICROBIT_VID }] }
+      );
+    } catch (err) {
+      if (err?.message?.includes("command 'workbench.experimental.requestUsbDevice' not found")) {
+        throw new Error(
+          "USB device selection is available only in browser VS Code. " +
+            "In desktop VS Code, run the Build & Flash task instead."
+        );
+      }
+      throw err;
+    }
     device = await authorisedDevice();
   }
   if (!device) {
