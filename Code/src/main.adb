@@ -1,31 +1,129 @@
+with Ada.Real_Time; use Ada.Real_Time;
+with MicroBit.Ultrasonic;
 with MicroBit.Console; use MicroBit.Console;
+with MicroBit.Types; use MicroBit.Types;
+with MicroBit.MotorDriver; use MicroBit.MotorDriver;
+with DFR0548;
 use MicroBit;
--- USN PROJECT TEMPLATE INTELLIGENT REAL-TIME SYSTEMS
--- Project name: [project name]
--- Project members: [name, name, .. ]
 
+procedure Main is
 
---This is a project template for the MicroBit v2, built against the embedded-nrf52833
---runtime (a Ravenscar/Jorvik-style profile) so we have a language-supported real-time
---OS for embedded targets. The runtime ships with the gnat_arm_elf toolchain that Alire
---installs, so there is nothing to copy by hand.
+   package SensorFront is new Ultrasonic (MB_P16, MB_P0);
+   package SensorLeft  is new Ultrasonic (MB_P14, MB_P2);
+   package SensorRight is new Ultrasonic (MB_P15, MB_P1);
 
---Check out the many examples in the ADL for the MicroBit v2 to see:
---  1) How the various drivers can be used like the accelerometer,speaker  or wireless communication via radio
---  2) How ADA features like the Math library and Bounded_Vectors (Containers) can be used
---  3) How to structure your Ada tasks with a protected object to synchronize data or with entries to synchronize flow
---  4) How to perform a execution time analysis
---  5) How to integrate your Ada project with a Unity project over USB
+   DistanceF : Distance_cm;
+   DistanceL : Distance_cm;
+   DistanceR : Distance_cm;
 
--- Open a View > Cross Platforms > Serial Ports to see Put_Line output. Set the baud rate to 115.200
-procedure Main with Priority => 0 is
+   type Robot_State is
+     (Driving,
+      Backing_Up,
+      Turning_Left,
+      Turning_Right);
+
+   Current_State : Robot_State := Driving;
+
+   State_Start : Time;
+   Action_Time : constant Time_Span := Milliseconds (500);
 
 begin
-   Put_Line (" Hello 1");
-   Put_Line (" fdnbhfshfh");
-   Put_Line (" 113345456");
-   
+
    loop
-      null;
+
+      -- Read sensors every loop
+      DistanceF := SensorFront.Read;
+      DistanceL := SensorLeft.Read;
+      DistanceR := SensorRight.Read;
+
+      case Current_State is
+
+         --------------------------------------------------
+         -- NORMAL DRIVING STATE
+         --------------------------------------------------
+         when Driving =>
+
+            if DistanceF <= 5 and DistanceF > 0 then
+
+               Put_Line ("Too close Front");
+               Put_Line ("Front: " & Distance_cm'Image(DistanceF));
+
+               Drive_Wheels
+                 (rf => (0, 4095),
+                  rb => (0, 4095),
+                  lf => (0, 4095),
+                  lb => (0, 4095));
+
+               State_Start := Clock;
+               Current_State := Backing_Up;
+
+            elsif DistanceL <= 5 and DistanceL > 0 then
+
+               Put_Line ("Too close Left");
+               Put_Line ("Left: " & Distance_cm'Image(DistanceL));
+
+               Drive_Wheels
+                 (rf => (4095, 0),
+                  rb => (4095, 0),
+                  lf => (0, 4095),
+                  lb => (0, 4095));
+
+               State_Start := Clock;
+               Current_State := Turning_Right;
+
+            elsif DistanceR <= 5 and DistanceR > 0 then
+
+               Put_Line ("Too close Right");
+               Put_Line ("Right: " & Distance_cm'Image(DistanceR));
+
+               Drive_Wheels
+                 (rf => (0, 4095),
+                  rb => (0, 4095),
+                  lf => (4095, 0),
+                  lb => (4095, 0));
+
+               State_Start := Clock;
+               Current_State := Turning_Left;
+
+            end if;
+
+         --------------------------------------------------
+         -- BACKING UP
+         --------------------------------------------------
+         when Backing_Up =>
+
+            if Clock - State_Start >= Action_Time then
+               Drive (Stop);
+               Put_Line ("Finished backing up");
+               Current_State := Driving;
+            end if;
+
+         --------------------------------------------------
+         -- TURNING LEFT
+         --------------------------------------------------
+         when Turning_Left =>
+
+            if Clock - State_Start >= Action_Time then
+               Drive (Stop);
+               Put_Line ("Finished left turn");
+               Current_State := Driving;
+            end if;
+
+         --------------------------------------------------
+         -- TURNING RIGHT
+         --------------------------------------------------
+         when Turning_Right =>
+
+            if Clock - State_Start >= Action_Time then
+               Drive (Stop);
+               Put_Line ("Finished right turn");
+               Current_State := Driving;
+            end if;
+
+      end case;
+
+      delay 0.05;
+
    end loop;
+
 end Main;
