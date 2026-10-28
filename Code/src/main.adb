@@ -3,127 +3,162 @@ with MicroBit.Ultrasonic;
 with MicroBit.Console; use MicroBit.Console;
 with MicroBit.Types; use MicroBit.Types;
 with MicroBit.MotorDriver; use MicroBit.MotorDriver;
-with DFR0548;
-use MicroBit;
+with MicroBit.MotorDriver.Car; use MicroBit.MotorDriver.Car;
+with MicroBit.Radio; use MicroBit.Radio;
+with HAL; use HAL;
+with Protocol; use Protocol;
+with DFR0548; use MicroBit;
 
-procedure Main is
+procedure Main with Priority => 0 is
 
    package SensorFront is new Ultrasonic (MB_P16, MB_P0);
    package SensorLeft  is new Ultrasonic (MB_P14, MB_P2);
    package SensorRight is new Ultrasonic (MB_P15, MB_P1);
 
+   TxData : RadioData;
+   RxData : RadioData;
+
    DistanceF : Distance_cm;
    DistanceL : Distance_cm;
    DistanceR : Distance_cm;
 
-   type Robot_State is
+   
+   Remote_Dir : MicroBit.MotorDriver.Car.Direction := Stopped;
+
+   type Car_State is
      (Driving,
       Backing_Up,
       Turning_Left,
       Turning_Right);
 
-   Current_State : Robot_State := Driving;
+   Current_State : Car_State := Driving;
 
    State_Start : Time;
    Action_Time : constant Time_Span := Milliseconds (500);
 
+   
+   Motor_Speed : constant MicroBit.MotorDriver.Car.Speed_Value := 2000;
+
 begin
+   TxData.Length   := 4;
+   TxData.Version  := 12;
+   TxData.Group    := 37;
+   TxData.Protocol := 14;
+
+   Setup
+     (RadioFrequency => 2416,
+      Length         => TxData.Length,
+      Version        => TxData.Version,
+      Group          => TxData.Group,
+      Protocol       => TxData.Protocol);
+
+   StartReceiving;
+
+   Move (Stopped, 0);
+   Put_Line ("Car ready");
 
    loop
 
-      -- Read sensors every loop
-      DistanceF := SensorFront.Read;
-      DistanceL := SensorLeft.Read;
-      DistanceR := SensorRight.Read;
+      --------------------------------------------------
+      -- 1. RECEIVE REMOTE COMMANDS
+      --------------------------------------------------
+      while DataReady loop
+         RxData := Receive;
+         Remote_Dir := Decode(RxData);
 
-      case Current_State is
-
-         --------------------------------------------------
-         -- NORMAL DRIVING STATE
-         --------------------------------------------------
-         when Driving =>
-
-            if DistanceF <= 5 and DistanceF > 0 then
-
-               Put_Line ("Too close Front");
-               Put_Line ("Front: " & Distance_cm'Image(DistanceF));
-
-               Drive_Wheels
-                 (rf => (0, 4095),
-                  rb => (0, 4095),
-                  lf => (0, 4095),
-                  lb => (0, 4095));
-
-               State_Start := Clock;
-               Current_State := Backing_Up;
-
-            elsif DistanceL <= 5 and DistanceL > 0 then
-
-               Put_Line ("Too close Left");
-               Put_Line ("Left: " & Distance_cm'Image(DistanceL));
-
-               Drive_Wheels
-                 (rf => (4095, 0),
-                  rb => (4095, 0),
-                  lf => (0, 4095),
-                  lb => (0, 4095));
-
-               State_Start := Clock;
-               Current_State := Turning_Right;
-
-            elsif DistanceR <= 5 and DistanceR > 0 then
-
-               Put_Line ("Too close Right");
-               Put_Line ("Right: " & Distance_cm'Image(DistanceR));
-
-               Drive_Wheels
-                 (rf => (0, 4095),
-                  rb => (0, 4095),
-                  lf => (4095, 0),
-                  lb => (4095, 0));
-
-               State_Start := Clock;
-               Current_State := Turning_Left;
-
-            end if;
+         Put_Line ("Len=" & UInt8'Image (RxData.Length) &
+          " Grp=" & UInt8'Image (RxData.Group) &
+          " P1="  & UInt8'Image (RxData.Payload (1)) &
+          " P2="  & UInt8'Image (RxData.Payload (2)) &
+          " P3="  & UInt8'Image (RxData.Payload (3)) &
+          " P4="  & UInt8'Image (RxData.Payload (4)));
+      
 
          --------------------------------------------------
-         -- BACKING UP
+         -- 2. READ ULTRASONIC SENSORS
          --------------------------------------------------
-         when Backing_Up =>
-
-            if Clock - State_Start >= Action_Time then
-               Drive (Stop);
-               Put_Line ("Finished backing up");
-               Current_State := Driving;
-            end if;
+         DistanceF := SensorFront.Read;
+         DistanceL := SensorLeft.Read;
+         DistanceR := SensorRight.Read;
 
          --------------------------------------------------
-         -- TURNING LEFT
+         -- 3. CENTRAL MOTOR CONTROL
          --------------------------------------------------
-         when Turning_Left =>
+         case Current_State is
 
-            if Clock - State_Start >= Action_Time then
-               Drive (Stop);
-               Put_Line ("Finished left turn");
-               Current_State := Driving;
-            end if;
+            when Driving =>
 
-         --------------------------------------------------
-         -- TURNING RIGHT
-         --------------------------------------------------
-         when Turning_Right =>
+               if DistanceF <= 5 and DistanceF > 0 then
 
-            if Clock - State_Start >= Action_Time then
-               Drive (Stop);
-               Put_Line ("Finished right turn");
-               Current_State := Driving;
-            end if;
+                  Put_Line ("Obstacle in front");
 
-      end case;
+                  Move (Backward, Motor_Speed);
 
-      delay 0.05;
+                  State_Start := Clock;
+                  Current_State := Backing_Up;
 
+               elsif DistanceL <= 5 and DistanceL > 0 then
+
+                  Put_Line ("Obstacle on left");
+
+                  Move (Right, Motor_Speed);
+
+                  State_Start := Clock;
+                  Current_State := Turning_Right;
+
+               elsif DistanceR <= 5 and DistanceR > 0 then
+
+                  Put_Line ("Obstacle on right");
+
+                  Move (Left, Motor_Speed);
+
+                  State_Start := Clock;
+                  Current_State := Turning_Left;
+
+               else
+
+                  Move (Remote_Dir, Motor_Speed);
+
+               end if;
+
+            --------------------------------------------------
+            -- BACKING UP
+            --------------------------------------------------
+            when Backing_Up =>
+
+               if Clock - State_Start >= Action_Time then
+                  Move (Stopped, 0);
+                  Put_Line ("Finished backing up");
+                  Current_State := Driving;
+               end if;
+
+            --------------------------------------------------
+            -- TURNING LEFT
+            --------------------------------------------------
+            when Turning_Left =>
+
+               if Clock - State_Start >= Action_Time then
+                  Move (Stopped, 0);
+                  Put_Line ("Finished left turn");
+                  Current_State := Driving;
+               end if;
+
+            --------------------------------------------------
+            -- TURNING RIGHT
+            --------------------------------------------------
+            when Turning_Right =>
+
+               if Clock - State_Start >= Action_Time then
+                  Move (Stopped, 0);
+                  Put_Line ("Finished right turn");
+                  Current_State := Driving;
+               end if;
+
+         end case;
+
+         delay 0.05;
+
+      end loop;
    end loop;
-
+   
 end Main;
